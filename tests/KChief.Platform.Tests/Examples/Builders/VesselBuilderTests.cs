@@ -17,8 +17,8 @@ public class VesselBuilderTests
         Assert.NotNull(vessel);
         Assert.Equal("vessel-001", vessel.Id);
         Assert.Equal("Test Vessel", vessel.Name);
-        Assert.Equal(VesselType.Cargo, vessel.Type);
-        Assert.Equal(VesselStatus.InService, vessel.Status);
+        Assert.Equal("Container Ship", vessel.Type);
+        Assert.Equal(VesselStatus.Online, vessel.Status);
     }
 
     [Fact]
@@ -27,20 +27,21 @@ public class VesselBuilderTests
         var vessel = VesselBuilder.Create()
             .WithId("vessel-999")
             .WithName("Custom Vessel")
-            .WithImoNumber("IMO9999999")
             .AsTanker()
-            .OutOfService()
-            .WithDimensions(200.0, 30.0, 10.0)
+            .Offline()
+            .WithDimensions(200.0, 30.0)
+            .WithMaxSpeed(20.0)
+            .WithLocation("Custom Port")
             .Build();
 
         Assert.Equal("vessel-999", vessel.Id);
         Assert.Equal("Custom Vessel", vessel.Name);
-        Assert.Equal("IMO9999999", vessel.IMONumber);
-        Assert.Equal(VesselType.Tanker, vessel.Type);
-        Assert.Equal(VesselStatus.OutOfService, vessel.Status);
+        Assert.Equal("Tanker", vessel.Type);
+        Assert.Equal(VesselStatus.Offline, vessel.Status);
         Assert.Equal(200.0, vessel.Length);
         Assert.Equal(30.0, vessel.Width);
-        Assert.Equal(10.0, vessel.Draft);
+        Assert.Equal(20.0, vessel.MaxSpeed);
+        Assert.Equal("Custom Port", vessel.Location);
     }
 
     [Fact]
@@ -52,7 +53,7 @@ public class VesselBuilderTests
         Assert.Equal("engine-001", engine.Id);
         Assert.Equal("vessel-001", engine.VesselId);
         Assert.Equal("Main Engine", engine.Name);
-        Assert.Equal(EngineType.Diesel, engine.Type);
+        Assert.Equal("Diesel", engine.Type);
         Assert.Equal(EngineStatus.Stopped, engine.Status);
     }
 
@@ -62,12 +63,12 @@ public class VesselBuilderTests
         var engine = EngineBuilder.Create()
             .WithId("engine-002")
             .WithVesselId("vessel-001")
-            .WithMaxRpm(1500.0)
+            .WithMaxRpm(1500)
             .Running()
             .Build();
 
         Assert.Equal(EngineStatus.Running, engine.Status);
-        Assert.True(engine.CurrentRpm > 0);
+        Assert.True(engine.RPM > 0);
     }
 
     [Fact]
