@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using KChief.Platform.Core.Middleware;
 using KChief.Platform.Core.Telemetry;
+using KChief.Platform.API.Services.Telemetry;
 using Microsoft.ApplicationInsights.DataContracts;
 
 namespace KChief.Platform.API.Middleware;

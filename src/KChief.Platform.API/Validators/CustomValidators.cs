@@ -16,7 +16,7 @@ public class VesselIdValidator<T> : PropertyValidator<T, string>
         return "Vessel ID must be in the format 'vessel-XXX' where XXX is a 3-digit number";
     }
 
-    protected override bool IsValid(PropertyValidatorContext context, string value)
+    public override bool IsValid(ValidationContext<T> context, string value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -41,7 +41,7 @@ public class EngineIdValidator<T> : PropertyValidator<T, string>
         return "Engine ID must be in the format 'engine-XXX' where XXX is a 3-digit number";
     }
 
-    protected override bool IsValid(PropertyValidatorContext context, string value)
+    public override bool IsValid(ValidationContext<T> context, string value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -73,7 +73,7 @@ public class MaritimeEmailValidator<T> : PropertyValidator<T, string>
         return $"Email must be from an allowed maritime domain: {string.Join(", ", _allowedDomains)}";
     }
 
-    protected override bool IsValid(PropertyValidatorContext context, string value)
+    public override bool IsValid(ValidationContext<T> context, string value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -113,7 +113,7 @@ public class MaritimeCoordinateValidator<T> : PropertyValidator<T, double>
             : "Longitude must be between -180 and 180 degrees";
     }
 
-    protected override bool IsValid(PropertyValidatorContext context, double value)
+    public override bool IsValid(ValidationContext<T> context, double value)
     {
         return _isLatitude
             ? value >= -90 && value <= 90
@@ -133,7 +133,7 @@ public class VesselNameValidator<T> : PropertyValidator<T, string>
         return "Vessel name must start with a maritime prefix (MS, MV, SS, etc.) and be between 3 and 100 characters";
     }
 
-    protected override bool IsValid(PropertyValidatorContext context, string value)
+    public override bool IsValid(ValidationContext<T> context, string value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {

@@ -199,11 +199,11 @@ public class ReportGenerationJob : ScheduledJobBase
 /// </summary>
 public class HealthCheckJob : ScheduledJobBase
 {
-    private readonly HealthCheckService _healthCheckService;
+    private readonly Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService _healthCheckService;
 
     public HealthCheckJob(
         ILogger<HealthCheckJob> logger,
-        HealthCheckService healthCheckService)
+        Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService healthCheckService)
         : base(logger)
     {
         _healthCheckService = healthCheckService ?? throw new ArgumentNullException(nameof(healthCheckService));

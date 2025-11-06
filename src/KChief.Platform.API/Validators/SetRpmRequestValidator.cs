@@ -1,6 +1,7 @@
 using FluentValidation;
 using KChief.Platform.Core.Interfaces;
 using KChief.Platform.Core.Models;
+using KChief.Platform.API.Controllers;
 
 namespace KChief.Platform.API.Validators;
 

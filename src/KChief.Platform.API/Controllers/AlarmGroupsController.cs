@@ -1,9 +1,8 @@
-using KChief.AlarmSystem.Services;
+using KChief.Platform.Core.Interfaces;
 using KChief.Platform.Core.Models;
+using KChief.AlarmSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Serilog;
-using Serilog.Context;
 
 namespace KChief.Platform.API.Controllers;
 
