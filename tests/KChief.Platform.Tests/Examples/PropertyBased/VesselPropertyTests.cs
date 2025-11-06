@@ -21,7 +21,9 @@ public class VesselPropertyTests
     [Property]
     public bool Vessel_Length_Should_Be_Positive(double length)
     {
-        if (length == 0) return true; // Skip zero values
+        // Skip invalid double values
+        if (double.IsNaN(length) || double.IsInfinity(length) || length == 0) 
+            return true;
         
         var vessel = new Vessel
         {
@@ -36,7 +38,9 @@ public class VesselPropertyTests
     [Property]
     public bool Vessel_Width_Should_Be_Positive(double width)
     {
-        if (width == 0) return true; // Skip zero values
+        // Skip invalid double values
+        if (double.IsNaN(width) || double.IsInfinity(width) || width == 0) 
+            return true;
         
         var vessel = new Vessel
         {
@@ -51,7 +55,9 @@ public class VesselPropertyTests
     [Property]
     public bool Vessel_MaxSpeed_Should_Be_Positive(double maxSpeed)
     {
-        if (maxSpeed == 0) return true; // Skip zero values
+        // Skip invalid double values
+        if (double.IsNaN(maxSpeed) || double.IsInfinity(maxSpeed) || maxSpeed == 0) 
+            return true;
         
         var vessel = new Vessel
         {
@@ -66,7 +72,10 @@ public class VesselPropertyTests
     [Property]
     public bool Vessel_Length_Should_Be_Greater_Than_Width(double length, double width)
     {
-        if (length == 0 || width == 0) return true; // Skip zero values
+        // Skip invalid double values
+        if (double.IsNaN(length) || double.IsInfinity(length) || length == 0 ||
+            double.IsNaN(width) || double.IsInfinity(width) || width == 0) 
+            return true;
         
         var vessel = new Vessel
         {

@@ -53,6 +53,8 @@ public class VesselContractTests : ContractTestBase
     [Fact]
     public void Vessel_Contract_Should_Match_Expected_Schema()
     {
+        var fixedDateTime = new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        
         var actual = new Vessel
         {
             Id = "vessel-001",
@@ -62,7 +64,9 @@ public class VesselContractTests : ContractTestBase
             Location = "Test Port",
             Length = 100.0,
             Width = 20.0,
-            MaxSpeed = 25.0
+            MaxSpeed = 25.0,
+            CreatedAt = fixedDateTime,
+            LastUpdated = fixedDateTime
         };
 
         var expected = new Vessel
@@ -74,7 +78,9 @@ public class VesselContractTests : ContractTestBase
             Location = "Test Port",
             Length = 100.0,
             Width = 20.0,
-            MaxSpeed = 25.0
+            MaxSpeed = 25.0,
+            CreatedAt = fixedDateTime,
+            LastUpdated = fixedDateTime
         };
 
         AssertContractMatches(actual, expected, "Vessel");
