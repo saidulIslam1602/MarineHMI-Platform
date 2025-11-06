@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using KChief.Platform.API.Hubs;
 using KChief.Platform.API.Services;
+using KChief.Platform.API.HealthChecks;
+using KChief.Platform.API.Middleware;
 using KChief.Platform.Core.Interfaces;
 using KChief.AlarmSystem.Services;
 using KChief.DataAccess.Data;
@@ -38,6 +42,44 @@ public class Program
 
         // Add SignalR
         builder.Services.AddSignalR();
+
+        // Add Application Insights
+        builder.Services.AddApplicationInsightsTelemetry();
+
+        // Add Performance Monitoring
+        builder.Services.AddSingleton<PerformanceMonitoringService>();
+
+        // Add Health Checks
+        builder.Services.AddHealthChecks()
+            // Basic health checks
+            .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("API is running"))
+            .AddDbContextCheck<ApplicationDbContext>("database")
+            .AddSqlite(builder.Configuration.GetConnectionString("DefaultConnection")!, "sqlite")
+            
+            // Custom health checks for dependencies
+            .AddCheck<OpcUaHealthCheck>("opcua")
+            .AddCheck<ModbusHealthCheck>("modbus") 
+            .AddCheck<MessageBusHealthCheck>("messagebus")
+            .AddCheck<VesselControlHealthCheck>("vesselcontrol")
+            .AddCheck<AlarmSystemHealthCheck>("alarmsystem")
+            
+            // Memory checks
+            .AddCheck("memory", () => 
+            {
+                var allocatedBytes = GC.GetTotalMemory(false);
+                var allocatedMB = allocatedBytes / 1024.0 / 1024.0;
+                return allocatedMB < 1024 
+                    ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy($"Memory usage: {allocatedMB:F2} MB")
+                    : Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Degraded($"High memory usage: {allocatedMB:F2} MB");
+            });
+
+        // Add Health Checks UI
+        builder.Services.AddHealthChecksUI(options =>
+        {
+            options.SetEvaluationTimeInSeconds(30);
+            options.MaximumHistoryEntriesPerEndpoint(50);
+            options.AddHealthCheckEndpoint("K-Chief API", "/health");
+        }).AddInMemoryStorage();
 
         // Register repositories and Unit of Work
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -80,11 +122,46 @@ public class Program
 
         app.UseHttpsRedirection();
         app.UseCors();
+
+        // Add performance monitoring middleware
+        app.UseMiddleware<PerformanceMonitoringMiddleware>();
+
         app.UseAuthorization();
         app.MapControllers();
 
         // Map SignalR hub
         app.MapHub<VesselHub>("/hubs/vessel");
+
+        // Map Health Check endpoints
+        app.MapHealthChecks("/health", new HealthCheckOptions
+        {
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
+
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready"),
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
+
+        app.MapHealthChecks("/health/live", new HealthCheckOptions
+        {
+            Predicate = _ => false, // Exclude all checks for liveness - just check if app is running
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
+
+        // Map Health Checks UI
+        app.MapHealthChecksUI(options =>
+        {
+            options.UIPath = "/health-ui";
+            options.ApiPath = "/health-api";
+        });
+
+        // Add performance metrics endpoint
+        app.MapGet("/metrics", (PerformanceMonitoringService performanceService) =>
+        {
+            return Results.Ok(performanceService.GetPerformanceStats());
+        }).WithTags("Monitoring");
 
         app.Run();
     }

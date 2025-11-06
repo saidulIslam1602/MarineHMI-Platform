@@ -63,6 +63,14 @@ dotnet run
 
 The API will be available at `https://localhost:5001` or `http://localhost:5000` (depending on your configuration).
 
+### Access Points
+
+- **Swagger UI**: `http://localhost:5000/swagger` - Interactive API documentation
+- **Health Checks**: `http://localhost:5000/health` - System health status
+- **Health Dashboard**: `http://localhost:5000/health-ui` - Real-time monitoring dashboard
+- **Performance Metrics**: `http://localhost:5000/metrics` - Application performance data
+- **SignalR Hub**: `ws://localhost:5000/hubs/vessel` - Real-time vessel updates
+
 ## Project Structure
 
 ```
@@ -103,6 +111,10 @@ K-Chief-Marine-Automation-Platform/
 - Database persistence with Entity Framework Core
 - Repository and Unit of Work patterns
 - SQLite database with migrations and seeding
+- Comprehensive health checks and monitoring
+- Performance metrics and Application Insights integration
+- Kubernetes-ready health probes (liveness, readiness, startup)
+- Real-time monitoring dashboard with Health Checks UI
 
 ### Architecture Highlights
 
@@ -113,6 +125,10 @@ K-Chief-Marine-Automation-Platform/
 - Protocol abstraction for industrial communication
 - Real-time updates via SignalR
 - Message bus for distributed communication
+- Production-ready monitoring and observability
+- Custom health checks for all dependencies
+- Performance monitoring with metrics collection
+- Request correlation and distributed tracing
 
 ## Documentation
 
@@ -124,6 +140,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - [Developer Guide](docs/DEVELOPER_GUIDE.md) - Development guidelines
 - [Legacy Modernization](docs/LEGACY_MODERNIZATION.md) - Code modernization examples
 - [Database Guide](docs/DATABASE.md) - Entity Framework implementation guide
+- [Monitoring Guide](docs/MONITORING.md) - Health checks and observability implementation
 
 ## Development Guidelines
 
