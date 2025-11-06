@@ -1,4 +1,5 @@
 using Polly;
+using Polly.Extensions.Http;
 using Serilog;
 using Serilog.Context;
 using KChief.Platform.API.Resilience;
@@ -91,7 +92,7 @@ public class ResilienceService
             catch (Exception ex)
             {
                 Log.Error(ex, "OPC UA operation failed: {OperationName}", operationName);
-                throw new ProtocolException($"OPC UA operation '{operationName}' failed", ex)
+                throw new ProtocolException("OPC UA", $"Operation '{operationName}' failed: {ex.Message}")
                     .WithContext("OperationName", operationName)
                     .WithContext("PolicyType", "OpcUa");
             }
@@ -129,7 +130,7 @@ public class ResilienceService
             catch (Exception ex)
             {
                 Log.Error(ex, "Modbus operation failed: {OperationName}", operationName);
-                throw new ProtocolException($"Modbus operation '{operationName}' failed", ex)
+                throw new ProtocolException("Modbus", $"Operation '{operationName}' failed: {ex.Message}")
                     .WithContext("OperationName", operationName)
                     .WithContext("PolicyType", "Modbus");
             }
@@ -363,49 +364,18 @@ public class ResilienceService
                 });
 
         // Circuit breaker policy
-        var circuitBreakerPolicy = Policy
-            .Handle<Exception>()
+        var circuitBreakerPolicy = HttpPolicyExtensions
+            .HandleTransientHttpError()
             .CircuitBreakerAsync(
                 handledEventsAllowedBeforeBreaking: circuitBreakerFailures,
-                durationOfBreak: circuitBreakerDuration,
-                onBreak: (exception, duration, context) =>
-                {
-                    var correlationId = context.GetValueOrDefault("CorrelationId", "unknown");
-                    using (LogContext.PushProperty("CorrelationId", correlationId))
-                    using (LogContext.PushProperty("CircuitState", "Open"))
-                    using (LogContext.PushProperty("BreakDurationSeconds", duration.TotalSeconds))
-                    {
-                        Log.Error("Circuit breaker opened for operation {OperationKey} for {BreakDurationSeconds} seconds due to: {ExceptionMessage}",
-                            context.OperationKey, duration.TotalSeconds, exception.Message);
-                    }
-                },
-                onReset: (context) =>
-                {
-                    var correlationId = context.GetValueOrDefault("CorrelationId", "unknown");
-                    using (LogContext.PushProperty("CorrelationId", correlationId))
-                    using (LogContext.PushProperty("CircuitState", "Closed"))
-                    {
-                        Log.Information("Circuit breaker reset for operation {OperationKey}", context.OperationKey);
-                    }
-                });
+                durationOfBreak: circuitBreakerDuration);
 
         // Timeout policy
         var timeoutPolicy = Policy.TimeoutAsync(
             timeout,
-            Polly.Timeout.TimeoutStrategy.Optimistic,
-            onTimeout: (context, timespan, task) =>
-            {
-                var correlationId = context.GetValueOrDefault("CorrelationId", "unknown");
-                using (LogContext.PushProperty("CorrelationId", correlationId))
-                using (LogContext.PushProperty("TimeoutSeconds", timespan.TotalSeconds))
-                {
-                    Log.Warning("Operation {OperationKey} timed out after {TimeoutSeconds} seconds",
-                        context.OperationKey, timespan.TotalSeconds);
-                }
-                return Task.CompletedTask;
-            });
+            Polly.Timeout.TimeoutStrategy.Optimistic);
 
         // Combine policies: Timeout -> Circuit Breaker -> Retry
-        return Policy.WrapAsync(timeoutPolicy, circuitBreakerPolicy, retryPolicy);
+        return Policy.WrapAsync(timeoutPolicy, (IAsyncPolicy)circuitBreakerPolicy, retryPolicy);
     }
 }

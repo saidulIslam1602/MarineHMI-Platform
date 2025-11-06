@@ -1,4 +1,5 @@
 using Polly;
+using Polly.Extensions.Http;
 using Polly.CircuitBreaker;
 using Polly.Bulkhead;
 using Polly.Timeout;
@@ -19,7 +20,7 @@ public class ResilienceMiddleware
     private readonly IConfiguration _configuration;
     
     // Circuit breaker for overall API health
-    private static readonly IAsyncPolicy _apiCircuitBreaker;
+    private static readonly IAsyncPolicy<HttpResponseMessage> _apiCircuitBreaker;
     
     // Bulkhead for request isolation
     private static readonly IAsyncPolicy _requestBulkhead;
@@ -27,8 +28,8 @@ public class ResilienceMiddleware
     static ResilienceMiddleware()
     {
         // Initialize static policies
-        _apiCircuitBreaker = Policy
-            .Handle<Exception>()
+        _apiCircuitBreaker = HttpPolicyExtensions
+            .HandleTransientHttpError()
             .CircuitBreakerAsync(
                 handledEventsAllowedBeforeBreaking: 10,
                 durationOfBreak: TimeSpan.FromMinutes(1));
@@ -73,7 +74,7 @@ public class ResilienceMiddleware
                 Log.Debug("Request completed successfully in {ElapsedMs}ms: {RequestMethod} {RequestPath}",
                     stopwatch.ElapsedMilliseconds, requestMethod, requestPath);
             }
-            catch (CircuitBreakerOpenException)
+            catch (BrokenCircuitException)
             {
                 stopwatch.Stop();
                 Log.Warning("Request rejected by circuit breaker: {RequestMethod} {RequestPath}",
@@ -128,7 +129,7 @@ public class ResilienceMiddleware
         {
             return Policy.WrapAsync(
                 timeoutPolicy,
-                _apiCircuitBreaker,
+                (IAsyncPolicy)_apiCircuitBreaker,
                 _requestBulkhead
             );
         }
@@ -182,13 +183,7 @@ public class ResilienceMiddleware
 
         return Policy.TimeoutAsync(
             timeout,
-            TimeoutStrategy.Optimistic,
-            onTimeout: (context, timespan, task) =>
-            {
-                Log.Warning("Request timeout after {TimeoutSeconds}s for {RequestPath}",
-                    timespan.TotalSeconds, path);
-                return Task.CompletedTask;
-            });
+            TimeoutStrategy.Optimistic);
     }
 
     /// <summary>

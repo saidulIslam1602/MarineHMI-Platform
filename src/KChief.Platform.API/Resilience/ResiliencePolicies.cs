@@ -56,35 +56,19 @@ public static class ResiliencePolicies
             .CircuitBreakerAsync(
                 handledEventsAllowedBeforeBreaking: 5,
                 durationOfBreak: TimeSpan.FromSeconds(30),
-                onBreak: (exception, duration, context) =>
+                onBreak: (exception, duration) =>
                 {
-                    var correlationId = context.GetValueOrDefault("CorrelationId", "unknown");
-                    using (LogContext.PushProperty("CorrelationId", correlationId))
-                    using (LogContext.PushProperty("CircuitState", "Open"))
-                    using (LogContext.PushProperty("BreakDurationSeconds", duration.TotalSeconds))
-                    {
-                        var errorMessage = exception.Exception?.Message ?? "Unknown error";
-                        Log.Error("Circuit breaker opened for operation {OperationKey} for {BreakDurationSeconds} seconds due to: {ExceptionMessage}",
-                            context.OperationKey, duration.TotalSeconds, errorMessage);
-                    }
+                    var errorMessage = exception.Exception?.Message ?? "Unknown error";
+                    Log.Error("Circuit breaker opened for {BreakDurationSeconds} seconds due to: {ExceptionMessage}",
+                        duration.TotalSeconds, errorMessage);
                 },
-                onReset: (context) =>
+                onReset: () =>
                 {
-                    var correlationId = context.GetValueOrDefault("CorrelationId", "unknown");
-                    using (LogContext.PushProperty("CorrelationId", correlationId))
-                    using (LogContext.PushProperty("CircuitState", "Closed"))
-                    {
-                        Log.Information("Circuit breaker reset for operation {OperationKey}", context.OperationKey);
-                    }
+                    Log.Information("Circuit breaker reset - service is healthy again");
                 },
-                onHalfOpen: (context) =>
+                onHalfOpen: () =>
                 {
-                    var correlationId = context.GetValueOrDefault("CorrelationId", "unknown");
-                    using (LogContext.PushProperty("CorrelationId", correlationId))
-                    using (LogContext.PushProperty("CircuitState", "HalfOpen"))
-                    {
-                        Log.Information("Circuit breaker half-open for operation {OperationKey}", context.OperationKey);
-                    }
+                    Log.Information("Circuit breaker half-open - testing service");
                 });
     }
 
@@ -113,7 +97,7 @@ public static class ResiliencePolicies
     /// </summary>
     public static IAsyncPolicy<HttpResponseMessage> GetFallbackPolicy(Func<CancellationToken, Task<HttpResponseMessage>> fallbackAction)
     {
-        return Policy
+        return (IAsyncPolicy<HttpResponseMessage>)Policy
             .Handle<HttpRequestException>()
             .Or<TaskCanceledException>()
             .Or<TimeoutRejectedException>()
@@ -138,7 +122,10 @@ public static class ResiliencePolicies
         // Add fallback policy first (outermost)
         if (fallbackAction != null)
         {
-            policies.Add(GetFallbackPolicy(fallbackAction));
+            // Adapt the Context-aware fallback action to the simpler signature
+            Func<CancellationToken, Task<HttpResponseMessage>> adaptedFallback = 
+                (cancellationToken) => fallbackAction(new Context(), cancellationToken);
+            policies.Add(GetFallbackPolicy(adaptedFallback));
         }
 
         // Add timeout policy
