@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  kchief-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: kchief-marine-automation-api
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_HTTPS_PORT=8081
+    volumes:
+      - ./certificates:/app/OPC Foundation/CertificateStores
+    restart: unless-stopped
+    networks:
+      - kchief-network
+
+networks:
+  kchief-network:
+    driver: bridge
+

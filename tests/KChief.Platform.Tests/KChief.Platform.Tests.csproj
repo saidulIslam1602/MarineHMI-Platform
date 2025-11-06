@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\KChief.Platform.Core\KChief.Platform.Core.csproj" />
     <ProjectReference Include="..\..\src\KChief.Platform.API\KChief.Platform.API.csproj" />
+    <ProjectReference Include="..\..\src\KChief.VesselControl\KChief.VesselControl.csproj" />
   </ItemGroup>
 
 </Project>

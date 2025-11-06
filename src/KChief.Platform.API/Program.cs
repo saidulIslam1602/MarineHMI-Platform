@@ -1,44 +1,71 @@
-var builder = WebApplication.CreateBuilder(args);
+using KChief.Platform.API.Hubs;
+using KChief.Platform.API.Services;
+using KChief.Platform.Core.Interfaces;
+using KChief.AlarmSystem.Services;
+using KChief.Protocols.OPC.Services;
+using KChief.VesselControl.Services;
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+namespace KChief.Platform.API;
 
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+public class Program
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-app.UseHttpsRedirection();
+        // Add services to the container
+        builder.Services.AddControllers();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+            {
+                Title = "K-Chief Marine Automation Platform API",
+                Version = "v1",
+                Description = "RESTful API for marine vessel control and monitoring"
+            });
+        });
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+        // Add SignalR
+        builder.Services.AddSignalR();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+        // Register application services
+        builder.Services.AddScoped<IVesselControlService, VesselControlService>();
+        builder.Services.AddSingleton<IAlarmService, AlarmService>();
+        builder.Services.AddSingleton<IOPCUaClient, OPCUaClientService>();
+        builder.Services.AddSingleton<RealtimeUpdateService>();
 
-app.Run();
+        // Add CORS for development
+        builder.Services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+            {
+                policy.AllowAnyOrigin()
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            });
+        });
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+        var app = builder.Build();
+
+        // Configure the HTTP request pipeline
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "K-Chief API v1");
+            });
+        }
+
+        app.UseHttpsRedirection();
+        app.UseCors();
+        app.UseAuthorization();
+        app.MapControllers();
+
+        // Map SignalR hub
+        app.MapHub<VesselHub>("/hubs/vessel");
+
+        app.Run();
+    }
 }
