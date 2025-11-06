@@ -13,7 +13,10 @@ using KChief.Platform.API.HealthChecks;
 using KChief.Platform.API.Middleware;
 using KChief.Platform.API.Filters;
 using KChief.Platform.API.Authorization;
+using KChief.Platform.API.Resilience;
+using KChief.Platform.API.Services.Caching;
 using KChief.Platform.Core.Interfaces;
+using KChief.Platform.Core.Models;
 using KChief.AlarmSystem.Services;
 using KChief.DataAccess.Data;
 using KChief.DataAccess.Interfaces;
@@ -22,6 +25,9 @@ using KChief.DataAccess.Repositories;
 using KChief.Protocols.Modbus.Services;
 using KChief.Protocols.OPC.Services;
 using KChief.VesselControl.Services;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Distributed;
+using StackExchange.Redis;
 
 namespace KChief.Platform.API;
 
@@ -72,6 +78,67 @@ public class Program
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+        // Configure Caching
+        var cacheOptions = builder.Configuration.GetSection("Caching").Get<CacheOptions>() ?? new CacheOptions();
+        builder.Services.Configure<CacheOptions>(builder.Configuration.GetSection("Caching"));
+
+        // Add in-memory caching
+        builder.Services.AddMemoryCache(options =>
+        {
+            options.SizeLimit = cacheOptions.InMemoryCacheSizeLimit;
+        });
+
+        // Add distributed caching (Redis if configured, otherwise in-memory)
+        if (cacheOptions.UseDistributedCache && !string.IsNullOrWhiteSpace(cacheOptions.RedisConnectionString))
+        {
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = cacheOptions.RedisConnectionString;
+                options.InstanceName = "kchief:";
+            });
+            
+            // Register Redis connection multiplexer
+            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+                ConnectionMultiplexer.Connect(cacheOptions.RedisConnectionString!));
+        }
+        else
+        {
+            // Fallback to in-memory distributed cache
+            builder.Services.AddDistributedMemoryCache();
+        }
+
+        // Register cache services
+        builder.Services.AddSingleton<InMemoryCacheService>();
+        builder.Services.AddSingleton<ICacheService>(sp =>
+        {
+            var inMemoryCache = sp.GetRequiredService<InMemoryCacheService>();
+            var distributedCache = sp.GetService<IDistributedCache>();
+            
+            // If Redis is configured, use composite cache (in-memory + Redis)
+            if (cacheOptions.UseDistributedCache && distributedCache != null)
+            {
+                var redisCache = new RedisCacheService(
+                    distributedCache,
+                    sp.GetRequiredService<IOptions<CacheOptions>>(),
+                    sp.GetRequiredService<ILogger<RedisCacheService>>());
+                
+                return new CompositeCacheService(
+                    inMemoryCache,
+                    redisCache,
+                    sp.GetRequiredService<IOptions<CacheOptions>>(),
+                    sp.GetRequiredService<ILogger<CompositeCacheService>>());
+            }
+            
+            // Otherwise, use only in-memory cache
+            return inMemoryCache;
+        });
+
+        // Register cache invalidation service
+        builder.Services.AddSingleton<ICacheInvalidationService, CacheInvalidationService>();
+
+        // Register response cache
+        builder.Services.AddSingleton<IResponseCache, InMemoryResponseCache>();
+
         // Add SignalR
         builder.Services.AddSignalR();
 
@@ -83,6 +150,9 @@ public class Program
 
             // Add Error Logging Service
             builder.Services.AddScoped<ErrorLoggingService>();
+
+            // Add Resilience Service
+            builder.Services.AddScoped<ResilienceService>();
 
             // Add Authentication Services
             builder.Services.AddScoped<IKChiefAuthenticationService, AuthenticationService>();
@@ -163,6 +233,7 @@ public class Program
             .AddCheck<MessageBusHealthCheck>("messagebus")
             .AddCheck<VesselControlHealthCheck>("vesselcontrol")
             .AddCheck<AlarmSystemHealthCheck>("alarmsystem")
+            .AddCheck<RedisHealthCheck>("redis")
             
             // Memory checks
             .AddCheck("memory", () => 
@@ -184,14 +255,33 @@ public class Program
 
         // Register repositories and Unit of Work
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-        builder.Services.AddScoped<IVesselRepository, VesselRepository>();
-        builder.Services.AddScoped<IEngineRepository, EngineRepository>();
-        builder.Services.AddScoped<ISensorRepository, SensorRepository>();
-        builder.Services.AddScoped<IAlarmRepository, AlarmRepository>();
-        builder.Services.AddScoped<IMessageBusEventRepository, MessageBusEventRepository>();
+        
+        // Register base repositories
+        builder.Services.AddScoped<VesselRepository>();
+        builder.Services.AddScoped<EngineRepository>();
+        builder.Services.AddScoped<SensorRepository>();
+        builder.Services.AddScoped<AlarmRepository>();
+        builder.Services.AddScoped<MessageBusEventRepository>();
+        
+        // Register cached repositories (wrappers around base repositories)
+        builder.Services.AddScoped<IVesselRepository>(sp =>
+        {
+            var baseRepo = sp.GetRequiredService<VesselRepository>();
+            var cacheService = sp.GetRequiredService<ICacheService>();
+            var cacheInvalidationService = sp.GetRequiredService<ICacheInvalidationService>();
+            var logger = sp.GetRequiredService<ILogger<CachedVesselRepository>>();
+            return new CachedVesselRepository(baseRepo, cacheService, cacheInvalidationService, logger);
+        });
+        
+        // For other repositories, use base implementations (can be wrapped later if needed)
+        builder.Services.AddScoped<IEngineRepository>(sp => sp.GetRequiredService<EngineRepository>());
+        builder.Services.AddScoped<ISensorRepository>(sp => sp.GetRequiredService<SensorRepository>());
+        builder.Services.AddScoped<IAlarmRepository>(sp => sp.GetRequiredService<AlarmRepository>());
+        builder.Services.AddScoped<IMessageBusEventRepository>(sp => sp.GetRequiredService<MessageBusEventRepository>());
 
-        // Register application services
-        builder.Services.AddScoped<IVesselControlService, VesselControlService>();
+            // Register application services
+            builder.Services.AddScoped<VesselControlService>(); // Base service
+            builder.Services.AddScoped<IVesselControlService, VesselControlService>(); // For backward compatibility
         builder.Services.AddSingleton<IAlarmService, AlarmService>();
         builder.Services.AddSingleton<IOPCUaClient, OPCUaClientService>();
         builder.Services.AddSingleton<IModbusClient, ModbusClientService>();
@@ -227,11 +317,18 @@ public class Program
         // Add correlation ID middleware (must be very early in pipeline)
         app.UseMiddleware<CorrelationIdMiddleware>();
 
+        // Add response caching middleware (before request logging for better performance)
+        // Note: IResponseCache is injected via DI, options are optional
+        app.UseMiddleware<ResponseCachingMiddleware>();
+
         // Add request/response logging middleware
         app.UseMiddleware<RequestResponseLoggingMiddleware>();
 
         // Add global exception handling middleware (must be early in pipeline)
         app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
+
+            // Add resilience middleware (before performance monitoring for accurate metrics)
+            app.UseResilience();
 
             // Add performance monitoring middleware
             app.UseMiddleware<PerformanceMonitoringMiddleware>();

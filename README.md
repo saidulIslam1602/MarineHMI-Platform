@@ -137,6 +137,11 @@ K-Chief-Marine-Automation-Platform/
 - API key authentication for service-to-service communication
 - Policy-based authorization with custom requirements
 - Comprehensive user management and security features
+- In-memory caching for frequently accessed data
+- Distributed caching with Redis support
+- HTTP response caching middleware
+- Query result caching with automatic invalidation
+- Intelligent cache invalidation strategies
 
 ### Architecture Highlights
 
@@ -177,6 +182,7 @@ Comprehensive documentation is available in the `docs/` directory:
 - [Error Handling Guide](docs/ERROR_HANDLING.md) - Exception management and error handling patterns
 - [Logging Guide](docs/LOGGING.md) - Structured logging with Serilog implementation
 - [Authentication Guide](docs/AUTHENTICATION.md) - Comprehensive authentication and authorization system
+- [Caching Guide](docs/CACHING.md) - Caching strategies and performance optimization
 
 ## Development Guidelines
 
