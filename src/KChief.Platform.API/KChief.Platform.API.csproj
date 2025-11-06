@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.21" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KChief.Platform.Core\KChief.Platform.Core.csproj" />
+    <ProjectReference Include="..\KChief.DataAccess\KChief.DataAccess.csproj" />
+    <ProjectReference Include="..\KChief.VesselControl\KChief.VesselControl.csproj" />
+    <ProjectReference Include="..\KChief.AlarmSystem\KChief.AlarmSystem.csproj" />
+    <ProjectReference Include="..\KChief.Protocols.OPC\KChief.Protocols.OPC.csproj" />
+    <ProjectReference Include="..\KChief.Protocols.Modbus\KChief.Protocols.Modbus.csproj" />
+  </ItemGroup>
+
+</Project>
