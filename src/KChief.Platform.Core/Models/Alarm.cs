@@ -69,6 +69,31 @@ public class Alarm
     /// User who cleared the alarm.
     /// </summary>
     public string? ClearedBy { get; set; }
+
+    /// <summary>
+    /// Rule ID that triggered this alarm (if rule-based).
+    /// </summary>
+    public string? RuleId { get; set; }
+
+    /// <summary>
+    /// Escalation level (0 = no escalation).
+    /// </summary>
+    public int EscalationLevel { get; set; } = 0;
+
+    /// <summary>
+    /// Group ID if alarm is part of a group.
+    /// </summary>
+    public string? GroupId { get; set; }
+
+    /// <summary>
+    /// Source value that triggered the alarm (for threshold-based alarms).
+    /// </summary>
+    public double? SourceValue { get; set; }
+
+    /// <summary>
+    /// Threshold value (for threshold-based alarms).
+    /// </summary>
+    public double? ThresholdValue { get; set; }
 }
 
 /// <summary>

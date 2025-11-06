@@ -15,6 +15,9 @@ using KChief.Platform.API.Filters;
 using KChief.Platform.API.Authorization;
 using KChief.Platform.API.Resilience;
 using KChief.Platform.API.Services.Caching;
+using KChief.Platform.API.Validators;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using KChief.Platform.Core.Interfaces;
 using KChief.Platform.Core.Models;
 using KChief.AlarmSystem.Services;
@@ -56,11 +59,19 @@ public class Program
             // Use Serilog for logging
             builder.Host.UseSerilog();
 
+        // Add FluentValidation
+        builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+        builder.Services.AddFluentValidationAutoValidation();
+        builder.Services.AddFluentValidationClientsideAdapters();
+
+        // Add localization for validation messages
+        builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
         // Add services to the container
         builder.Services.AddControllers(options =>
         {
             // Add global filters
-            options.Filters.Add<ModelValidationFilter>();
+            options.Filters.Add<FluentValidationFilter>();
             options.Filters.Add<OperationCancelledExceptionFilter>();
         });
         builder.Services.AddEndpointsApiExplorer();
@@ -282,7 +293,31 @@ public class Program
             // Register application services
             builder.Services.AddScoped<VesselControlService>(); // Base service
             builder.Services.AddScoped<IVesselControlService, VesselControlService>(); // For backward compatibility
-        builder.Services.AddSingleton<IAlarmService, AlarmService>();
+        // Register alarm services
+        builder.Services.AddSingleton<AlarmService>(); // Base service
+        builder.Services.AddSingleton<AlarmRuleEngine>();
+        builder.Services.AddSingleton<AlarmEscalationService>();
+        builder.Services.AddSingleton<AlarmGroupingService>();
+        builder.Services.AddSingleton<AlarmHistoryService>();
+        
+        // Register enhanced alarm service as the main service
+        builder.Services.AddSingleton<IAlarmService>(sp =>
+        {
+            var baseService = sp.GetRequiredService<AlarmService>();
+            var ruleEngine = sp.GetRequiredService<AlarmRuleEngine>();
+            var escalationService = sp.GetRequiredService<AlarmEscalationService>();
+            var groupingService = sp.GetRequiredService<AlarmGroupingService>();
+            var historyService = sp.GetRequiredService<AlarmHistoryService>();
+            var logger = sp.GetRequiredService<ILogger<EnhancedAlarmService>>();
+            
+            return new EnhancedAlarmService(
+                baseService,
+                ruleEngine,
+                escalationService,
+                groupingService,
+                historyService,
+                logger);
+        });
         builder.Services.AddSingleton<IOPCUaClient, OPCUaClientService>();
         builder.Services.AddSingleton<IModbusClient, ModbusClientService>();
         builder.Services.AddSingleton<IMessageBus, MessageBusService>();
@@ -317,9 +352,50 @@ public class Program
         // Add correlation ID middleware (must be very early in pipeline)
         app.UseMiddleware<CorrelationIdMiddleware>();
 
+        // Add validation middleware (early validation of JSON structure)
+        app.UseMiddleware<ValidationMiddleware>();
+
+        // Add request validation middleware (early in pipeline to reject invalid requests)
+        var requestValidationOptions = new RequestValidationOptions
+        {
+            MaxRequestSize = builder.Configuration.GetValue<long>("Middleware:RequestValidation:MaxRequestSize", 10 * 1024 * 1024),
+            MaxPathLength = builder.Configuration.GetValue<int>("Middleware:RequestValidation:MaxPathLength", 2048),
+            MaxQueryStringLength = builder.Configuration.GetValue<int>("Middleware:RequestValidation:MaxQueryStringLength", 2048),
+            AllowedContentTypes = builder.Configuration.GetSection("Middleware:RequestValidation:AllowedContentTypes")
+                .Get<List<string>>() ?? new List<string> { "application/json", "application/xml", "multipart/form-data" },
+            RequiredHeaders = builder.Configuration.GetSection("Middleware:RequestValidation:RequiredHeaders")
+                .Get<List<string>>() ?? new List<string>(),
+            BlockedUserAgents = builder.Configuration.GetSection("Middleware:RequestValidation:BlockedUserAgents")
+                .Get<List<string>>() ?? new List<string>()
+        };
+        app.UseMiddleware<RequestValidationMiddleware>(requestValidationOptions);
+
+        // Add rate limiting middleware (after validation, before processing)
+        var rateLimitingOptions = new RateLimitingOptions
+        {
+            RequestsPerWindow = builder.Configuration.GetValue<int>("Middleware:RateLimiting:RequestsPerWindow", 100),
+            WindowSize = TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("Middleware:RateLimiting:WindowSizeSeconds", 60)),
+            Strategy = builder.Configuration.GetValue<string>("Middleware:RateLimiting:Strategy", "FixedWindow") == "SlidingWindow"
+                ? RateLimitingStrategy.SlidingWindow
+                : RateLimitingStrategy.FixedWindow,
+            PerEndpointLimiting = builder.Configuration.GetValue<bool>("Middleware:RateLimiting:PerEndpointLimiting", false),
+            ExcludedPaths = builder.Configuration.GetSection("Middleware:RateLimiting:ExcludedPaths")
+                .Get<List<string>>() ?? new List<string> { "/health", "/health-ui", "/metrics" }
+        };
+        app.UseMiddleware<RateLimitingMiddleware>(rateLimitingOptions);
+
         // Add response caching middleware (before request logging for better performance)
         // Note: IResponseCache is injected via DI, options are optional
         app.UseMiddleware<ResponseCachingMiddleware>();
+
+        // Add response time tracking middleware (for detailed performance metrics)
+        var responseTimeOptions = new ResponseTimeTrackingOptions
+        {
+            SlowRequestThresholdMs = builder.Configuration.GetValue<int>("Middleware:ResponseTimeTracking:SlowRequestThresholdMs", 1000),
+            IncludeTimingHeaders = builder.Configuration.GetValue<bool>("Middleware:ResponseTimeTracking:IncludeTimingHeaders", true),
+            TrackDetailedTimings = builder.Configuration.GetValue<bool>("Middleware:ResponseTimeTracking:TrackDetailedTimings", true)
+        };
+        app.UseMiddleware<ResponseTimeTrackingMiddleware>(responseTimeOptions);
 
         // Add request/response logging middleware
         app.UseMiddleware<RequestResponseLoggingMiddleware>();

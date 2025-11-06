@@ -1,3 +1,5 @@
+using KChief.Platform.Core.Middleware;
+using KChief.Platform.Core.Utilities;
 using Serilog.Context;
 
 namespace KChief.Platform.API.Middleware;
@@ -5,22 +7,24 @@ namespace KChief.Platform.API.Middleware;
 /// <summary>
 /// Middleware that ensures every request has a correlation ID for tracking across the application.
 /// </summary>
-public class CorrelationIdMiddleware
+public class CorrelationIdMiddleware : BaseMiddleware
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<CorrelationIdMiddleware> _logger;
-
     public const string CorrelationIdHeaderName = "X-Correlation-ID";
     public const string CorrelationIdKey = "CorrelationId";
 
     public CorrelationIdMiddleware(RequestDelegate next, ILogger<CorrelationIdMiddleware> logger)
+        : base(next, logger)
     {
-        _next = next;
-        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
+        if (!ShouldProcess(context))
+        {
+            await Next(context);
+            return;
+        }
+
         // Get or generate correlation ID
         var correlationId = GetOrGenerateCorrelationId(context);
         
@@ -31,12 +35,12 @@ public class CorrelationIdMiddleware
         context.Response.Headers.Append(CorrelationIdHeaderName, correlationId);
         
         // Push to Serilog LogContext for structured logging
-        using (LogContext.PushProperty(CorrelationIdKey, correlationId))
+        using (CreateLogContext(context, "CorrelationId"))
         {
-            _logger.LogDebug("Processing request {Method} {Path} with correlation ID {CorrelationId}", 
+            Logger.LogDebug("Processing request {Method} {Path} with correlation ID {CorrelationId}", 
                 context.Request.Method, context.Request.Path, correlationId);
             
-            await _next(context);
+            await Next(context);
         }
     }
 
@@ -60,7 +64,7 @@ public class CorrelationIdMiddleware
             }
         }
 
-        // Generate new correlation ID
-        return Guid.NewGuid().ToString("N")[..12]; // Short format for readability
+        // Generate new correlation ID using utility
+        return IdGenerator.GenerateCorrelationId();
     }
 }
