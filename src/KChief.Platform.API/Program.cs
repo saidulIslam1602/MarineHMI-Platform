@@ -54,7 +54,6 @@ public class Program
             // Basic health checks
             .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("API is running"))
             .AddDbContextCheck<ApplicationDbContext>("database")
-            .AddSqlite(builder.Configuration.GetConnectionString("DefaultConnection")!, "sqlite")
             
             // Custom health checks for dependencies
             .AddCheck<OpcUaHealthCheck>("opcua")
