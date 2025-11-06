@@ -72,15 +72,6 @@ The API will be available at `https://localhost:5001` or `http://localhost:5000`
 - **SignalR Hub**: `ws://localhost:5000/hubs/vessel` - Real-time vessel updates
 - **Authentication**: `http://localhost:5000/api/auth/login` - User authentication endpoint
 
-### Default Users
-
-| Username | Password | Role | Description |
-|----------|----------|------|-------------|
-| admin | admin123 | Administrator | Full system access |
-| captain | captain123 | Captain | Vessel command authority |
-| engineer | engineer123 | ChiefEngineer | Technical systems |
-| operator | operator123 | Operator | General operations |
-| observer | observer123 | Observer | Read-only monitoring |
 
 ## Project Structure
 
