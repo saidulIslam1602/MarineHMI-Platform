@@ -145,9 +145,9 @@ public class EngineBuilder
         };
     }
 
-    public static EngineBuilder Create() => new();
+    public static EngineBuilder Create() => new EngineBuilder();
 
-    public static EngineBuilder CreateDefault() => new()
+    public static EngineBuilder CreateDefault() => new EngineBuilder()
         .WithId("engine-001")
         .WithVesselId("vessel-001")
         .WithName("Main Engine")

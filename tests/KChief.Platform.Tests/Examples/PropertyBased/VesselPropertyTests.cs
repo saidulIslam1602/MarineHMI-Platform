@@ -93,21 +93,21 @@ public static class VesselGenerators
 {
     public static Arbitrary<string> ValidVesselId()
     {
-        return Gen.Choose(1, 999)
+        return Gen.Choose<int>(1, 999)
             .Select(n => $"vessel-{n:D3}")
             .ToArbitrary();
     }
 
     public static Arbitrary<string> ValidImoNumber()
     {
-        return Gen.Choose(1000000, 9999999)
+        return Gen.Choose<int>(1000000, 9999999)
             .Select(n => $"IMO{n}")
             .ToArbitrary();
     }
 
     public static Arbitrary<double> PositiveDouble()
     {
-        return Gen.Choose(1, 10000)
+        return Gen.Choose<int>(1, 10000)
             .Select(n => (double)n)
             .ToArbitrary();
     }

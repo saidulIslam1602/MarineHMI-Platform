@@ -132,9 +132,9 @@ public class VesselBuilder
         };
     }
 
-    public static VesselBuilder Create() => new();
+    public static VesselBuilder Create() => new VesselBuilder();
 
-    public static VesselBuilder CreateDefault() => new()
+    public static VesselBuilder CreateDefault() => new VesselBuilder()
         .WithId("vessel-001")
         .WithName("Test Vessel")
         .AsContainerShip()

@@ -135,9 +135,9 @@ public class AlarmBuilder
         };
     }
 
-    public static AlarmBuilder Create() => new();
+    public static AlarmBuilder Create() => new AlarmBuilder();
 
-    public static AlarmBuilder CreateDefault() => new()
+    public static AlarmBuilder CreateDefault() => new AlarmBuilder()
         .WithId("alarm-001")
         .WithTitle("Test Alarm")
         .WithDescription("Test alarm description")
