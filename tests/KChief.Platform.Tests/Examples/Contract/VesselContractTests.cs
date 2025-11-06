@@ -17,16 +17,16 @@ public class VesselContractTests : ContractTestBase
         {
             Id = "vessel-001",
             Name = "Test Vessel",
-            IMONumber = "IMO1234567",
-            CallSign = "TEST",
-            Type = VesselType.Cargo,
+            Type = "Container Ship",
+            Status = VesselStatus.Online,
+            Location = "Test Port",
             Length = 100.0,
             Width = 20.0,
-            Draft = 5.0
+            MaxSpeed = 25.0
         };
 
         AssertContractHasRequiredProperties(vessel, 
-            "id", "name", "imoNumber", "callSign", "type", "length", "width", "draft");
+            "id", "name", "type", "status", "location", "length", "width", "maxSpeed");
     }
 
     [Fact]
@@ -36,17 +36,15 @@ public class VesselContractTests : ContractTestBase
         {
             Id = "vessel-001",
             Name = "Test Vessel",
-            IMONumber = "IMO1234567",
-            CallSign = "TEST",
-            Type = VesselType.Cargo,
+            Type = "Container Ship",
+            Status = VesselStatus.Online,
+            Location = "Test Port",
             Length = 100.0,
             Width = 20.0,
-            Draft = 5.0,
-            GrossTonnage = 5000.0,
-            Flag = "US",
-            BuiltDate = DateTime.UtcNow.AddYears(-10),
-            Owner = "Test Owner",
-            Status = VesselStatus.InService
+            MaxSpeed = 25.0,
+            Engines = new List<Engine>(),
+            CreatedAt = DateTime.UtcNow,
+            LastUpdated = DateTime.UtcNow
         };
 
         AssertContractRoundTrip(original);
@@ -59,24 +57,24 @@ public class VesselContractTests : ContractTestBase
         {
             Id = "vessel-001",
             Name = "Test Vessel",
-            IMONumber = "IMO1234567",
-            CallSign = "TEST",
-            Type = VesselType.Cargo,
+            Type = "Container Ship",
+            Status = VesselStatus.Online,
+            Location = "Test Port",
             Length = 100.0,
             Width = 20.0,
-            Draft = 5.0
+            MaxSpeed = 25.0
         };
 
         var expected = new Vessel
         {
             Id = "vessel-001",
             Name = "Test Vessel",
-            IMONumber = "IMO1234567",
-            CallSign = "TEST",
-            Type = VesselType.Cargo,
+            Type = "Container Ship",
+            Status = VesselStatus.Online,
+            Location = "Test Port",
             Length = 100.0,
             Width = 20.0,
-            Draft = 5.0
+            MaxSpeed = 25.0
         };
 
         AssertContractMatches(actual, expected, "Vessel");

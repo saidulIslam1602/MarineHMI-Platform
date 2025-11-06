@@ -19,19 +19,15 @@ public static class FakerExtensions
         {
             Id = id ?? $"vessel-{faker.Random.Int(1, 999):D3}",
             Name = faker.Company.CompanyName() + " Vessel",
-            IMONumber = $"IMO{faker.Random.Int(1000000, 9999999)}",
-            CallSign = faker.Random.AlphaNumeric(4).ToUpper(),
-            Type = faker.PickRandom<VesselType>(),
+            Type = faker.PickRandom("Container Ship", "Tanker", "Cargo Ship", "Cruise Ship", "Bulk Carrier"),
+            Status = faker.PickRandom<VesselStatus>(),
+            Location = faker.Address.City() + " Port",
             Length = faker.Random.Double(50, 400),
             Width = faker.Random.Double(10, 60),
-            Draft = faker.Random.Double(3, 20),
-            GrossTonnage = faker.Random.Double(1000, 50000),
-            Flag = faker.Address.CountryCode(),
-            BuiltDate = faker.Date.Past(30),
-            Owner = faker.Company.CompanyName(),
-            Status = faker.PickRandom<VesselStatus>(),
+            MaxSpeed = faker.Random.Double(10, 35),
+            Engines = new List<Engine>(),
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            LastUpdated = DateTime.UtcNow
         };
     }
 
@@ -45,17 +41,15 @@ public static class FakerExtensions
             Id = id ?? $"engine-{faker.Random.Int(1, 999):D3}",
             VesselId = vesselId ?? $"vessel-{faker.Random.Int(1, 999):D3}",
             Name = faker.PickRandom("Main Engine", "Auxiliary Engine", "Generator Engine"),
-            Type = faker.PickRandom<EngineType>(),
-            MaxRpm = faker.Random.Double(500, 2000),
-            CurrentRpm = faker.Random.Double(0, 1000),
+            Type = faker.PickRandom("Diesel", "Gas Turbine", "Electric", "Steam"),
+            MaxRPM = faker.Random.Int(500, 2000),
+            RPM = faker.Random.Int(0, 1000),
             Status = faker.PickRandom<EngineStatus>(),
             Temperature = faker.Random.Double(20, 100),
-            Pressure = faker.Random.Double(0.5, 2.0),
-            Manufacturer = faker.Company.CompanyName(),
-            Model = faker.Random.AlphaNumeric(10),
-            InstalledDate = faker.Date.Past(10),
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            OilPressure = faker.Random.Double(0.5, 2.0),
+            FuelConsumption = faker.Random.Double(10, 100),
+            IsRunning = faker.Random.Bool(),
+            LastUpdated = DateTime.UtcNow
         };
     }
 
