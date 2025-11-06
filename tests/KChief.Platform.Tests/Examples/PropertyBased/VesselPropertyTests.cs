@@ -1,14 +1,13 @@
 using FsCheck;
 using FsCheck.Xunit;
 using KChief.Platform.Core.Models;
-using KChief.Platform.Tests.TestHelpers.PropertyBased;
 
 namespace KChief.Platform.Tests.Examples.PropertyBased;
 
 /// <summary>
 /// Example property-based tests for Vessel model.
 /// </summary>
-public class VesselPropertyTests : PropertyBasedTestBase
+public class VesselPropertyTests
 {
     [Property]
     public bool VesselId_Should_Be_Valid_Format(string vesselId)
@@ -95,30 +94,4 @@ public class VesselPropertyTests : PropertyBasedTestBase
     }
 }
 
-/// <summary>
-/// Custom generators for property-based tests.
-/// </summary>
-public static class VesselGenerators
-{
-    public static Arbitrary<string> ValidVesselId()
-    {
-        return Gen.Choose<int>(1, 999)
-            .Select(n => $"vessel-{n:D3}")
-            .ToArbitrary();
-    }
-
-    public static Arbitrary<string> ValidImoNumber()
-    {
-        return Gen.Choose<int>(1000000, 9999999)
-            .Select(n => $"IMO{n}")
-            .ToArbitrary();
-    }
-
-    public static Arbitrary<double> PositiveDouble()
-    {
-        return Gen.Choose<int>(1, 10000)
-            .Select(n => (double)n)
-            .ToArbitrary();
-    }
-}
 
