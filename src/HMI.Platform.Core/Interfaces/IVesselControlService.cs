@@ -1,10 +1,47 @@
+// ================================================================
+// HMI Marine Automation Platform
+// ================================================================
+// File: IVesselControlService.cs
+// Project: HMI.Platform.Core
+// Created: 2025
+// Author: HMI Development Team
+// 
+// Description:
+// Core service interface defining vessel control operations for
+// the marine automation platform. Provides contract for vessel
+// management, monitoring, and control functionality.
+//
+// Dependencies:
+// - HMI.Platform.Core.Models: Core domain models
+//
+// Copyright (c) 2025 HMI Marine Automation Platform
+// Licensed under MIT License
+// ================================================================
+
 using HMI.Platform.Core.Models;
 
 namespace HMI.Platform.Core.Interfaces;
 
 /// <summary>
-/// Service interface for vessel control operations.
+/// Defines the contract for vessel control operations in the marine automation platform.
 /// </summary>
+/// <remarks>
+/// This interface establishes the standard operations for vessel management including
+/// discovery, monitoring, control, and status management. Implementations should
+/// provide thread-safe, asynchronous operations with proper error handling.
+/// 
+/// Core Responsibilities:
+/// - Vessel lifecycle management (discovery, registration, decommissioning)
+/// - Real-time status monitoring and updates
+/// - Engine control and parameter management
+/// - Operational data retrieval and persistence
+/// 
+/// Implementation Guidelines:
+/// - All methods should be implemented asynchronously using Task/Task&lt;T&gt;
+/// - Null return values indicate vessel not found conditions
+/// - Exceptions should be thrown for operational failures
+/// - Thread safety must be maintained across all operations
+/// </remarks>
 public interface IVesselControlService
 {
     /// <summary>

@@ -1,3 +1,37 @@
+// ================================================================
+// HMI Marine Automation Platform
+// ================================================================
+// File: Program.cs
+// Project: HMI.Platform.API
+// Created: 2025
+// Author: HMI Development Team
+// 
+// Description:
+// Main application entry point and service configuration for the
+// HMI Marine Automation Platform API. Configures dependency
+// injection, middleware pipeline, authentication, logging,
+// health checks, and all platform services.
+//
+// Key Configurations:
+// - ASP.NET Core Web API with Swagger documentation
+// - JWT authentication with role-based authorization
+// - Entity Framework Core with SQLite database
+// - Serilog structured logging with multiple sinks
+// - Health checks for all dependencies and services
+// - SignalR real-time communication hubs
+// - Resilience patterns (retry, circuit breaker, timeout)
+// - Distributed caching with Redis support
+// - Background services for data processing
+// - API versioning and rate limiting
+//
+// Environment Support:
+// - Development: Enhanced logging, Swagger UI, detailed errors
+// - Production: Optimized performance, security headers, monitoring
+//
+// Copyright (c) 2025 HMI Marine Automation Platform
+// Licensed under MIT License
+// ================================================================
+
 using Microsoft.EntityFrameworkCore;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;

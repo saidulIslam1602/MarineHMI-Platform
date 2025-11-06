@@ -1,3 +1,27 @@
+// ================================================================
+// HMI Marine Automation Platform
+// ================================================================
+// File: VesselsController.cs
+// Project: HMI.Platform.API
+// Created: 2025
+// Author: HMI Development Team
+// 
+// Description:
+// RESTful API controller for vessel management operations in the
+// marine automation platform. Provides endpoints for vessel
+// monitoring, control, and status management.
+//
+// Dependencies:
+// - HMI.Platform.Core: Core interfaces and models
+// - Microsoft.AspNetCore.Mvc: ASP.NET Core MVC framework
+//
+// API Version: v1
+// Base Route: /api/vessels
+//
+// Copyright (c) 2025 HMI Marine Automation Platform
+// Licensed under MIT License
+// ================================================================
+
 using HMI.Platform.Core.Interfaces;
 using HMI.Platform.Core.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -5,8 +29,48 @@ using Microsoft.AspNetCore.Mvc;
 namespace HMI.Platform.API.Controllers;
 
 /// <summary>
-/// Controller for vessel management operations.
+/// RESTful API controller providing comprehensive vessel management operations for marine automation systems.
 /// </summary>
+/// <remarks>
+/// This controller exposes HTTP endpoints for managing vessel operations including:
+/// - Vessel discovery and registration
+/// - Real-time status monitoring and updates
+/// - Engine control and parameter management
+/// - Operational data retrieval and analysis
+/// 
+/// All endpoints return standardized HTTP status codes and JSON responses.
+/// Authentication and authorization are handled by the platform middleware.
+/// 
+/// Supported Operations:
+/// - GET /api/vessels - Retrieve all registered vessels
+/// - GET /api/vessels/{id} - Get specific vessel details
+/// - POST /api/vessels/{id}/start - Start vessel operations
+/// - POST /api/vessels/{id}/stop - Stop vessel operations
+/// - PUT /api/vessels/{id}/rpm - Update engine RPM settings
+/// 
+/// Response Formats:
+/// - Success responses include vessel data in JSON format
+/// - Error responses follow RFC 7807 Problem Details standard
+/// - All timestamps are in UTC format (ISO 8601)
+/// </remarks>
+/// <example>
+/// Example usage:
+/// <code>
+/// GET /api/vessels
+/// Accept: application/json
+/// 
+/// Response:
+/// [
+///   {
+///     "id": "vessel-001",
+///     "name": "Atlantic Explorer",
+///     "type": "Container Ship",
+///     "status": "Operational",
+///     "location": { "latitude": 40.7128, "longitude": -74.0060 }
+///   }
+/// ]
+/// </code>
+/// </example>
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
