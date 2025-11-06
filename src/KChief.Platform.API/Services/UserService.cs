@@ -11,7 +11,6 @@ namespace KChief.Platform.API.Services;
 /// </summary>
 public class UserService : IUserService
 {
-    private readonly IKChiefAuthenticationService _authenticationService;
     private readonly ILogger<UserService> _logger;
 
     // In-memory user storage for demonstration (replace with database in production)
@@ -94,9 +93,8 @@ public class UserService : IUserService
         }
     };
 
-    public UserService(IKChiefAuthenticationService authenticationService, ILogger<UserService> logger)
+    public UserService(ILogger<UserService> logger)
     {
-        _authenticationService = authenticationService;
         _logger = logger;
     }
 
@@ -248,7 +246,7 @@ public class UserService : IUserService
                 }
 
                 // Hash password
-                user.PasswordHash = _authenticationService.HashPassword(password);
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
                 user.Id = Guid.NewGuid().ToString();
                 user.CreatedAt = DateTime.UtcNow;
                 user.UpdatedAt = DateTime.UtcNow;
@@ -363,14 +361,14 @@ public class UserService : IUserService
                 }
 
                 // Verify current password
-                if (!_authenticationService.VerifyPassword(currentPassword, user.PasswordHash))
+                if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
                 {
                     Log.Warning("Password change failed: Invalid current password for user {UserId}", userId);
                     return await Task.FromResult(false);
                 }
 
                 // Update password
-                user.PasswordHash = _authenticationService.HashPassword(newPassword);
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
                 user.UpdatedAt = DateTime.UtcNow;
 
                 Log.Information("Password changed successfully for user: {UserId}", userId);
@@ -401,7 +399,7 @@ public class UserService : IUserService
                 }
 
                 // Update password
-                user.PasswordHash = _authenticationService.HashPassword(newPassword);
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
                 user.UpdatedAt = DateTime.UtcNow;
                 user.FailedLoginAttempts = 0; // Reset failed attempts
                 user.LockedUntil = null; // Unlock account

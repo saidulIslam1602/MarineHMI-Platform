@@ -10,20 +10,17 @@ namespace KChief.Platform.API.Services.Background;
 /// </summary>
 public class DataPollingService : BackgroundServiceBase
 {
-    private readonly IVesselControlService _vesselControlService;
-    private readonly IAlarmService _alarmService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly DataPollingOptions _options;
 
     public DataPollingService(
         ILogger<DataPollingService> logger,
         IServiceProvider serviceProvider,
-        IVesselControlService vesselControlService,
-        IAlarmService alarmService,
+        IServiceScopeFactory serviceScopeFactory,
         IOptions<DataPollingOptions> options)
         : base(logger, serviceProvider)
     {
-        _vesselControlService = vesselControlService ?? throw new ArgumentNullException(nameof(vesselControlService));
-        _alarmService = alarmService ?? throw new ArgumentNullException(nameof(alarmService));
+        _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
     }
 
@@ -33,7 +30,10 @@ public class DataPollingService : BackgroundServiceBase
 
         try
         {
-            var vessels = await _vesselControlService.GetAllVesselsAsync();
+            using var scope = _serviceScopeFactory.CreateScope();
+            var vesselControlService = scope.ServiceProvider.GetRequiredService<IVesselControlService>();
+            
+            var vessels = await vesselControlService.GetAllVesselsAsync();
             
             foreach (var vessel in vessels)
             {
@@ -42,7 +42,7 @@ public class DataPollingService : BackgroundServiceBase
                     break;
                 }
 
-                await PollVesselDataAsync(vessel, cancellationToken);
+                await PollVesselDataAsync(vessel, scope.ServiceProvider, cancellationToken);
             }
 
             Logger.LogDebug("Data polling cycle completed");
@@ -54,14 +54,17 @@ public class DataPollingService : BackgroundServiceBase
         }
     }
 
-    private async Task PollVesselDataAsync(Vessel vessel, CancellationToken cancellationToken)
+    private async Task PollVesselDataAsync(Vessel vessel, IServiceProvider serviceProvider, CancellationToken cancellationToken)
     {
         try
         {
             Logger.LogDebug("Polling data for vessel {VesselId}", vessel.Id);
 
+            var vesselControlService = serviceProvider.GetRequiredService<IVesselControlService>();
+            var alarmService = serviceProvider.GetRequiredService<IAlarmService>();
+
             // Poll sensors
-            var sensors = await _vesselControlService.GetVesselSensorsAsync(vessel.Id);
+            var sensors = await vesselControlService.GetVesselSensorsAsync(vessel.Id);
             foreach (var sensor in sensors)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -75,7 +78,7 @@ public class DataPollingService : BackgroundServiceBase
                     // Create alarm if sensor value exceeds thresholds
                     if (sensor.Value > 100) // Example threshold
                     {
-                        await _alarmService.CreateAlarmAsync(
+                        await alarmService.CreateAlarmAsync(
                             $"High {sensor.Type} Reading",
                             $"Sensor {sensor.Name} reading {sensor.Value} exceeds threshold",
                             AlarmSeverity.Warning,
@@ -87,7 +90,7 @@ public class DataPollingService : BackgroundServiceBase
             }
 
             // Poll engines
-            var engines = await _vesselControlService.GetVesselEnginesAsync(vessel.Id);
+            var engines = await vesselControlService.GetVesselEnginesAsync(vessel.Id);
             foreach (var engine in engines)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -99,7 +102,7 @@ public class DataPollingService : BackgroundServiceBase
                 // Create alarms based on engine conditions
                 if (engine.Temperature > 90) // High temperature threshold
                 {
-                    await _alarmService.CreateAlarmAsync(
+                    await alarmService.CreateAlarmAsync(
                         "High Engine Temperature",
                         $"Engine {engine.Name} temperature {engine.Temperature}°C exceeds safe limit",
                         AlarmSeverity.Critical,
@@ -109,7 +112,7 @@ public class DataPollingService : BackgroundServiceBase
 
                 if (engine.OilPressure < 2.0) // Low pressure threshold
                 {
-                    await _alarmService.CreateAlarmAsync(
+                    await alarmService.CreateAlarmAsync(
                         "Low Oil Pressure",
                         $"Engine {engine.Name} oil pressure {engine.OilPressure} bar is below safe limit",
                         AlarmSeverity.Critical,
@@ -119,7 +122,7 @@ public class DataPollingService : BackgroundServiceBase
 
                 if (engine.RPM > engine.MaxRPM * 0.95) // RPM near maximum
                 {
-                    await _alarmService.CreateAlarmAsync(
+                    await alarmService.CreateAlarmAsync(
                         "High Engine RPM",
                         $"Engine {engine.Name} RPM {engine.RPM} is near maximum limit",
                         AlarmSeverity.Warning,

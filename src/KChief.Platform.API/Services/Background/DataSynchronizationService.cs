@@ -10,20 +10,17 @@ namespace KChief.Platform.API.Services.Background;
 /// </summary>
 public class DataSynchronizationService : BackgroundServiceBase
 {
-    private readonly IVesselControlService _vesselControlService;
-    private readonly IAlarmService _alarmService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly DataSynchronizationOptions _options;
 
     public DataSynchronizationService(
         ILogger<DataSynchronizationService> logger,
         IServiceProvider serviceProvider,
-        IVesselControlService vesselControlService,
-        IAlarmService alarmService,
+        IServiceScopeFactory serviceScopeFactory,
         IOptions<DataSynchronizationOptions> options)
         : base(logger, serviceProvider)
     {
-        _vesselControlService = vesselControlService ?? throw new ArgumentNullException(nameof(vesselControlService));
-        _alarmService = alarmService ?? throw new ArgumentNullException(nameof(alarmService));
+        _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
     }
 
@@ -33,19 +30,21 @@ public class DataSynchronizationService : BackgroundServiceBase
 
         try
         {
+            using var scope = _serviceScopeFactory.CreateScope();
+            
             if (_options.SyncVessels)
             {
-                await SynchronizeVesselsAsync(cancellationToken);
+                await SynchronizeVesselsAsync(scope.ServiceProvider, cancellationToken);
             }
 
             if (_options.SyncAlarms)
             {
-                await SynchronizeAlarmsAsync(cancellationToken);
+                await SynchronizeAlarmsAsync(scope.ServiceProvider, cancellationToken);
             }
 
             if (_options.SyncEngineStatus)
             {
-                await SynchronizeEngineStatusAsync(cancellationToken);
+                await SynchronizeEngineStatusAsync(scope.ServiceProvider, cancellationToken);
             }
 
             Logger.LogDebug("Data synchronization cycle completed");
@@ -57,11 +56,12 @@ public class DataSynchronizationService : BackgroundServiceBase
         }
     }
 
-    private async Task SynchronizeVesselsAsync(CancellationToken cancellationToken)
+    private async Task SynchronizeVesselsAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
     {
         try
         {
-            var vessels = await _vesselControlService.GetAllVesselsAsync();
+            var vesselControlService = serviceProvider.GetRequiredService<IVesselControlService>();
+            var vessels = await vesselControlService.GetAllVesselsAsync();
             Logger.LogDebug("Synchronized {Count} vessels", vessels.Count());
         }
         catch (Exception ex)
@@ -70,11 +70,12 @@ public class DataSynchronizationService : BackgroundServiceBase
         }
     }
 
-    private async Task SynchronizeAlarmsAsync(CancellationToken cancellationToken)
+    private async Task SynchronizeAlarmsAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
     {
         try
         {
-            var alarms = await _alarmService.GetAllAlarmsAsync();
+            var alarmService = serviceProvider.GetRequiredService<IAlarmService>();
+            var alarms = await alarmService.GetAllAlarmsAsync();
             var activeAlarms = alarms.Where(a => a.Status == AlarmStatus.Active);
             Logger.LogDebug("Synchronized {Count} active alarms", activeAlarms.Count());
         }
@@ -84,16 +85,17 @@ public class DataSynchronizationService : BackgroundServiceBase
         }
     }
 
-    private async Task SynchronizeEngineStatusAsync(CancellationToken cancellationToken)
+    private async Task SynchronizeEngineStatusAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
     {
         try
         {
-            var vessels = await _vesselControlService.GetAllVesselsAsync();
+            var vesselControlService = serviceProvider.GetRequiredService<IVesselControlService>();
+            var vessels = await vesselControlService.GetAllVesselsAsync();
             int engineCount = 0;
 
             foreach (var vessel in vessels)
             {
-                var engines = await _vesselControlService.GetVesselEnginesAsync(vessel.Id);
+                var engines = await vesselControlService.GetVesselEnginesAsync(vessel.Id);
                 engineCount += engines.Count();
             }
 
