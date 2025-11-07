@@ -3,6 +3,7 @@ using HMI.Platform.Core.Middleware;
 using HMI.Platform.Core.Telemetry;
 using HMI.Platform.API.Services.Telemetry;
 using Microsoft.ApplicationInsights.DataContracts;
+using Serilog.Context;
 
 namespace HMI.Platform.API.Middleware;
 

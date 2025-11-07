@@ -49,7 +49,7 @@ public class ResilienceController : ControllerBase
             try
             {
                 var result = await _resilienceService.ExecuteExternalApiAsync(
-                    async (context, cancellationToken) =>
+                    (context, cancellationToken) =>
                     {
                         // Simulate transient failures
                         var random = new Random();
@@ -60,14 +60,14 @@ public class ResilienceController : ControllerBase
                         }
 
                         Log.Information("Retry demo operation succeeded");
-                        return new ResilienceTestResult
+                        return Task.FromResult(new ResilienceTestResult
                         {
                             Success = true,
                             Message = "Operation completed successfully after potential retries",
                             Timestamp = DateTime.UtcNow,
                             Pattern = "Retry",
                             AttemptCount = context.GetValueOrDefault("RetryCount", 1)
-                        };
+                        });
                     },
                     "RetryDemo");
 
@@ -304,7 +304,7 @@ public class ResilienceController : ControllerBase
             catch (Exception ex)
             {
                 // Fallback response
-                Log.Information("Executing fallback response due to primary service failure");
+                Log.Information(ex, "Executing fallback response due to primary service failure");
                 
                 var fallbackResult = new ResilienceTestResult
                 {

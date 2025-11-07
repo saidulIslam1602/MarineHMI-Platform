@@ -212,7 +212,7 @@ public class RateLimitingMiddleware
         var limit = _options.RequestsPerWindow;
         
         // Get current count from cache
-        var countStr = await _cacheService.GetAsync<string>(cacheKey) ?? "0";
+        var countStr = (await _cacheService.GetAsync<string>(cacheKey)) ?? "0";
         var currentCount = int.TryParse(countStr, out var count) ? count : 0;
 
         if (currentCount >= limit)

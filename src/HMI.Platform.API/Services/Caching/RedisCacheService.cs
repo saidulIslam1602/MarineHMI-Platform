@@ -156,7 +156,7 @@ public class RedisCacheService : ICacheService
                 await SetAsync(fullKey, value, expiration, cancellationToken);
             }
 
-            return value;
+            return value!;
         }
     }
 

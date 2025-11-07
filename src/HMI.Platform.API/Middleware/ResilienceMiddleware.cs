@@ -1,7 +1,5 @@
 using Polly;
-using Polly.Extensions.Http;
 using Polly.CircuitBreaker;
-using Polly.Bulkhead;
 using Polly.Timeout;
 using Serilog;
 using Serilog.Context;
@@ -20,23 +18,21 @@ public class ResilienceMiddleware
     private readonly IConfiguration _configuration;
     
     // Circuit breaker for overall API health
-    private static readonly IAsyncPolicy<HttpResponseMessage> _apiCircuitBreaker;
-    
-    // Bulkhead for request isolation
-    private static readonly IAsyncPolicy _requestBulkhead;
+    private static readonly ResiliencePipeline _resiliencePipeline;
     
     static ResilienceMiddleware()
     {
-        // Initialize static policies
-        _apiCircuitBreaker = HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .CircuitBreakerAsync(
-                handledEventsAllowedBeforeBreaking: 10,
-                durationOfBreak: TimeSpan.FromMinutes(1));
-
-        _requestBulkhead = Policy.BulkheadAsync(
-            maxParallelization: 100,
-            maxQueuingActions: 200);
+        // Initialize resilience pipeline with Polly v8 syntax
+        _resiliencePipeline = new ResiliencePipelineBuilder()
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+            {
+                FailureRatio = 0.5,
+                SamplingDuration = TimeSpan.FromSeconds(10),
+                MinimumThroughput = 10,
+                BreakDuration = TimeSpan.FromMinutes(1)
+            })
+            .AddTimeout(TimeSpan.FromSeconds(30))
+            .Build();
     }
 
     public ResilienceMiddleware(RequestDelegate next, ILogger<ResilienceMiddleware> logger, IConfiguration configuration)
@@ -60,13 +56,11 @@ public class ResilienceMiddleware
             
             try
             {
-                // Apply resilience patterns based on request type
-                var resiliencePolicy = GetResiliencePolicyForRequest(context);
-                
-                await resiliencePolicy.ExecuteAsync(async () =>
+                // Apply resilience patterns using Polly v8
+                await _resiliencePipeline.ExecuteAsync(async (cancellationToken) =>
                 {
                     await _next(context);
-                });
+                }, context.RequestAborted);
                 
                 stopwatch.Stop();
                 
@@ -83,24 +77,8 @@ public class ResilienceMiddleware
                 context.Response.StatusCode = 503; // Service Unavailable
                 await context.Response.WriteAsync("Service temporarily unavailable due to circuit breaker");
             }
-            catch (BulkheadRejectedException)
-            {
-                stopwatch.Stop();
-                Log.Warning("Request rejected by bulkhead: {RequestMethod} {RequestPath}",
-                    requestMethod, requestPath);
-                
-                context.Response.StatusCode = 429; // Too Many Requests
-                await context.Response.WriteAsync("Service at capacity, please try again later");
-            }
-            catch (TimeoutRejectedException)
-            {
-                stopwatch.Stop();
-                Log.Warning("Request timed out: {RequestMethod} {RequestPath}",
-                    requestMethod, requestPath);
-                
-                context.Response.StatusCode = 408; // Request Timeout
-                await context.Response.WriteAsync("Request timed out");
-            }
+            // Bulkhead rejection handling is now part of the unified resilience pipeline
+            // Timeout handling is now part of the unified resilience pipeline
             catch (Exception ex)
             {
                 stopwatch.Stop();
@@ -113,78 +91,9 @@ public class ResilienceMiddleware
         }
     }
 
-    /// <summary>
-    /// Gets the appropriate resilience policy based on the request characteristics.
-    /// </summary>
-    private IAsyncPolicy GetResiliencePolicyForRequest(HttpContext context)
-    {
-        var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
-        var method = context.Request.Method.ToUpperInvariant();
-        
-        // Different timeout policies based on request type
-        var timeoutPolicy = GetTimeoutPolicyForRequest(path, method);
-        
-        // Critical operations get stricter policies
-        if (IsCriticalOperation(path, method))
-        {
-            return Policy.WrapAsync(
-                timeoutPolicy,
-                (IAsyncPolicy)_apiCircuitBreaker,
-                _requestBulkhead
-            );
-        }
-        
-        // Health checks and monitoring endpoints get minimal resilience
-        if (IsMonitoringEndpoint(path))
-        {
-            return Policy.TimeoutAsync(TimeSpan.FromSeconds(5));
-        }
-        
-        // Authentication endpoints get moderate resilience
-        if (IsAuthenticationEndpoint(path))
-        {
-            var authTimeoutPolicy = Policy.TimeoutAsync(TimeSpan.FromSeconds(10));
-            var authBulkheadPolicy = Policy.BulkheadAsync(50, 100);
-            
-            return Policy.WrapAsync(authTimeoutPolicy, authBulkheadPolicy);
-        }
-        
-        // Default policy for regular operations
-        return Policy.WrapAsync(timeoutPolicy, _requestBulkhead);
-    }
+    // Removed GetResiliencePolicyForRequest - using unified pipeline approach with Polly v8
 
-    /// <summary>
-    /// Gets timeout policy based on request characteristics.
-    /// </summary>
-    private IAsyncPolicy GetTimeoutPolicyForRequest(string path, string method)
-    {
-        var timeout = method switch
-        {
-            "GET" => TimeSpan.FromSeconds(30),
-            "POST" => TimeSpan.FromSeconds(60),
-            "PUT" => TimeSpan.FromSeconds(60),
-            "DELETE" => TimeSpan.FromSeconds(30),
-            _ => TimeSpan.FromSeconds(30)
-        };
-
-        // Adjust timeout based on path
-        if (path.Contains("/vessels") && method == "POST")
-        {
-            timeout = TimeSpan.FromSeconds(90); // Vessel creation might take longer
-        }
-        else if (path.Contains("/engines") && (method == "POST" || method == "PUT"))
-        {
-            timeout = TimeSpan.FromSeconds(45); // Engine operations
-        }
-        else if (path.Contains("/alarms"))
-        {
-            timeout = TimeSpan.FromSeconds(15); // Alarms should be fast
-        }
-
-        return Policy.TimeoutAsync(
-            timeout,
-            TimeoutStrategy.Optimistic);
-    }
+    // Timeout handling is now part of the unified resilience pipeline
 
     /// <summary>
     /// Determines if the operation is critical and requires strict resilience policies.

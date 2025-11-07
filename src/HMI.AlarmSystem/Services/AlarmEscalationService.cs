@@ -309,3 +309,4 @@ internal class AlarmEscalationState
     public int CurrentLevel { get; set; }
 }
 
+#endregion

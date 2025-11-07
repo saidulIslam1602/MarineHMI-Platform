@@ -1,5 +1,6 @@
 using HMI.Platform.Core.Middleware;
 using HMI.Platform.Core.Utilities;
+using Serilog.Context;
 
 namespace HMI.Platform.API.Middleware;
 
@@ -36,7 +37,11 @@ public class CorrelationIdMiddleware : BaseMiddleware
         Logger.LogDebug("Processing request {Method} {Path} with correlation ID {CorrelationId}", 
             context.Request.Method, context.Request.Path, correlationId);
         
-        await Next(context);
+        // Add correlation ID to Serilog context
+        using (LogContext.PushProperty("CorrelationId", correlationId))
+        {
+            await Next(context);
+        }
     }
 
     private static string GetOrGenerateCorrelationId(HttpContext context)

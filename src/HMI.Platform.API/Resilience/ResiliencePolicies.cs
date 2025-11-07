@@ -157,13 +157,13 @@ public static class ServiceResiliencePolicies
             timeout: TimeSpan.FromSeconds(10),
             bulkheadMaxParallelization: 5,
             bulkheadMaxQueuing: 10,
-            fallbackAction: async (context, cancellationToken) =>
+            fallbackAction: (context, cancellationToken) =>
             {
                 Log.Error("Critical vessel control operation failed, returning emergency response");
-                return new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable)
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable)
                 {
                     Content = new StringContent("{\"error\":\"Vessel control service unavailable\",\"fallback\":true}")
-                };
+                });
             });
 
     /// <summary>
@@ -174,13 +174,13 @@ public static class ServiceResiliencePolicies
             timeout: TimeSpan.FromSeconds(15),
             bulkheadMaxParallelization: 8,
             bulkheadMaxQueuing: 15,
-            fallbackAction: async (context, cancellationToken) =>
+            fallbackAction: (context, cancellationToken) =>
             {
                 Log.Warning("OPC UA communication failed, using cached data");
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent("{\"data\":\"cached\",\"fallback\":true}")
-                };
+                });
             });
 
     /// <summary>
@@ -191,13 +191,13 @@ public static class ServiceResiliencePolicies
             timeout: TimeSpan.FromSeconds(20),
             bulkheadMaxParallelization: 6,
             bulkheadMaxQueuing: 12,
-            fallbackAction: async (context, cancellationToken) =>
+            fallbackAction: (context, cancellationToken) =>
             {
                 Log.Warning("Modbus communication failed, using default values");
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent("{\"data\":\"default\",\"fallback\":true}")
-                };
+                });
             });
 
     /// <summary>
@@ -208,13 +208,13 @@ public static class ServiceResiliencePolicies
             timeout: TimeSpan.FromSeconds(25),
             bulkheadMaxParallelization: 12,
             bulkheadMaxQueuing: 25,
-            fallbackAction: async (context, cancellationToken) =>
+            fallbackAction: (context, cancellationToken) =>
             {
                 Log.Warning("Message bus operation failed, queuing for later retry");
-                return new HttpResponseMessage(System.Net.HttpStatusCode.Accepted)
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.Accepted)
                 {
                     Content = new StringContent("{\"queued\":true,\"fallback\":true}")
-                };
+                });
             });
 
     /// <summary>
@@ -225,13 +225,13 @@ public static class ServiceResiliencePolicies
             timeout: TimeSpan.FromSeconds(5),
             bulkheadMaxParallelization: 15,
             bulkheadMaxQueuing: 30,
-            fallbackAction: async (context, cancellationToken) =>
+            fallbackAction: (context, cancellationToken) =>
             {
                 Log.Error("Alarm system operation failed, using emergency notification");
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent("{\"emergency\":true,\"fallback\":true}")
-                };
+                });
             });
 
     /// <summary>
@@ -265,12 +265,12 @@ public static class ServiceResiliencePolicies
             timeout: TimeSpan.FromSeconds(30),
             bulkheadMaxParallelization: 10,
             bulkheadMaxQueuing: 20,
-            fallbackAction: async (context, cancellationToken) =>
+            fallbackAction: (context, cancellationToken) =>
             {
                 Log.Information("External API call failed, returning cached response");
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new StringContent("{\"cached\":true,\"fallback\":true}")
-                };
+                });
             });
 }

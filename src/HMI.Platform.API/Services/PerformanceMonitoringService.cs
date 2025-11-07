@@ -206,6 +206,36 @@ public class PerformanceMonitoringService : IDisposable
     }
 
     /// <summary>
+    /// Records a custom metric.
+    /// </summary>
+    public void RecordMetric(string name, double value, params KeyValuePair<string, object?>[] tags)
+    {
+        try
+        {
+            // Record the metric based on the name
+            switch (name.ToLowerInvariant())
+            {
+                case "request_duration":
+                    _requestDuration.Record(value, tags);
+                    break;
+                case "vessel_operation_duration":
+                    _vesselOperationDuration.Record(value, tags);
+                    break;
+                case "database_operation_duration":
+                    _databaseOperationDuration.Record(value, tags);
+                    break;
+                default:
+                    _logger.LogWarning("Unknown metric name: {MetricName}", name);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recording metric {MetricName}", name);
+        }
+    }
+
+    /// <summary>
     /// Gets current performance statistics.
     /// </summary>
     public object GetPerformanceStats()

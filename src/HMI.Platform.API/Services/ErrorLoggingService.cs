@@ -43,7 +43,7 @@ public class ErrorLoggingService
                 {
                     ["type"] = exception.InnerException.GetType().Name,
                     ["message"] = exception.InnerException.Message,
-                    ["stackTrace"] = exception.InnerException.StackTrace
+                    ["stackTrace"] = exception.InnerException.StackTrace ?? "No stack trace available"
                 } : null
             },
             ["request"] = httpContext != null ? new Dictionary<string, object?>
@@ -52,7 +52,7 @@ public class ErrorLoggingService
                 ["path"] = httpContext.Request.Path.Value,
                 ["queryString"] = httpContext.Request.QueryString.Value,
                 ["headers"] = GetSafeHeaders(httpContext.Request.Headers),
-                ["userAgent"] = httpContext.Request.Headers.UserAgent.ToString(),
+                ["userAgent"] = httpContext.Request.Headers.UserAgent.ToString() ?? "Unknown",
                 ["remoteIpAddress"] = httpContext.Connection.RemoteIpAddress?.ToString(),
                 ["contentType"] = httpContext.Request.ContentType
             } : null,

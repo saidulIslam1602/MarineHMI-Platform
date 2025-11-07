@@ -134,7 +134,7 @@ public class AuthenticationService : IHMIAuthenticationService
         }
     }
 
-    public async Task<AuthenticationResult> AuthenticateApiKeyAsync(string apiKey)
+    public Task<AuthenticationResult> AuthenticateApiKeyAsync(string apiKey)
     {
         using (LogContext.PushProperty("AuthenticationMethod", "ApiKey"))
         {
@@ -143,11 +143,11 @@ public class AuthenticationService : IHMIAuthenticationService
                 if (string.IsNullOrWhiteSpace(apiKey))
                 {
                     Log.Warning("API key authentication failed: API key is empty");
-                    return new AuthenticationResult
+                    return Task.FromResult(new AuthenticationResult
                     {
                         IsSuccess = false,
                         ErrorMessage = "API key is required"
-                    };
+                    });
                 }
 
                 // Hash the provided API key to compare with stored hash
@@ -157,25 +157,25 @@ public class AuthenticationService : IHMIAuthenticationService
                 // For now, return a placeholder implementation
                 Log.Information("API key authentication attempted");
                 
-                return new AuthenticationResult
+                return Task.FromResult(new AuthenticationResult
                 {
                     IsSuccess = false,
                     ErrorMessage = "API key authentication not yet implemented"
-                };
+                });
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error during API key authentication");
-                return new AuthenticationResult
+                return Task.FromResult(new AuthenticationResult
                 {
                     IsSuccess = false,
                     ErrorMessage = "Authentication failed due to an internal error"
-                };
+                });
             }
         }
     }
 
-    public async Task<HMITokenValidationResult> ValidateTokenAsync(string token)
+    public Task<HMITokenValidationResult> ValidateTokenAsync(string token)
     {
         try
         {
@@ -205,7 +205,7 @@ public class AuthenticationService : IHMIAuthenticationService
 
             var claims = principal.Claims.ToDictionary(c => c.Type, c => c.Value);
 
-            return new HMITokenValidationResult
+            return Task.FromResult(new HMITokenValidationResult
             {
                 IsValid = true,
                 UserId = userId,
@@ -213,36 +213,36 @@ public class AuthenticationService : IHMIAuthenticationService
                 Role = role,
                 ExpiresAt = jwtToken.ValidTo,
                 Claims = claims
-            };
+            });
         }
         catch (SecurityTokenExpiredException)
         {
-            return new HMITokenValidationResult
+            return Task.FromResult(new HMITokenValidationResult
             {
                 IsValid = false,
                 ErrorMessage = "Token has expired"
-            };
+            });
         }
         catch (SecurityTokenInvalidSignatureException)
         {
-            return new HMITokenValidationResult
+            return Task.FromResult(new HMITokenValidationResult
             {
                 IsValid = false,
                 ErrorMessage = "Token signature is invalid"
-            };
+            });
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error validating JWT token");
-            return new HMITokenValidationResult
+            return Task.FromResult(new HMITokenValidationResult
             {
                 IsValid = false,
                 ErrorMessage = "Token validation failed"
-            };
+            });
         }
     }
 
-    public async Task<string> GenerateTokenAsync(User user)
+    public Task<string> GenerateTokenAsync(User user)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_jwtSecret);
@@ -311,19 +311,19 @@ public class AuthenticationService : IHMIAuthenticationService
         };
 
         var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
+        return Task.FromResult(tokenHandler.WriteToken(token));
     }
 
-    public async Task<string> RefreshTokenAsync(string refreshToken)
+    public Task<string> RefreshTokenAsync(string refreshToken)
     {
         // TODO: Implement refresh token logic with token storage
-        throw new NotImplementedException("Refresh token functionality not yet implemented");
+        return Task.FromException<string>(new NotImplementedException("Refresh token functionality not yet implemented"));
     }
 
-    public async Task<bool> RevokeTokenAsync(string token)
+    public Task<bool> RevokeTokenAsync(string token)
     {
         // TODO: Implement token revocation with token blacklist
-        throw new NotImplementedException("Token revocation functionality not yet implemented");
+        return Task.FromException<bool>(new NotImplementedException("Token revocation functionality not yet implemented"));
     }
 
     public string HashPassword(string password)

@@ -229,7 +229,7 @@ public class Program
         // Register Quartz.NET for scheduled tasks
         builder.Services.AddQuartz(q =>
         {
-            q.UseMicrosoftDependencyInjectionJobFactory();
+            // UseMicrosoftDependencyInjectionJobFactory is now the default
             q.UseSimpleTypeLoader();
             q.UseInMemoryStore();
             q.UseDefaultThreadPool(tp =>

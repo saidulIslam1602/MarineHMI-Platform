@@ -131,9 +131,8 @@ public class ApiKeyAuthenticationSchemeHandler : AuthenticationHandler<ApiKeyAut
         IOptionsMonitor<ApiKeyAuthenticationSchemeOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
-        ISystemClock clock,
         IHMIAuthenticationService authenticationService)
-        : base(options, logger, encoder, clock)
+        : base(options, logger, encoder)
     {
         _authenticationService = authenticationService;
     }

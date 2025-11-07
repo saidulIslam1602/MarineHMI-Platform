@@ -140,7 +140,7 @@ public class CompositeCacheService : ICacheService
             await SetAsync(key, value, expiration, cancellationToken);
         }
 
-        return value;
+        return value!;
     }
 
     public async Task RefreshAsync(string key, TimeSpan? expiration = null, CancellationToken cancellationToken = default)

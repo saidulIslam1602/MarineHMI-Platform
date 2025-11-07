@@ -3,6 +3,8 @@ using HMI.Platform.Core.Models;
 using HMI.AlarmSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
+using Serilog.Context;
 
 namespace HMI.Platform.API.Controllers;
 
