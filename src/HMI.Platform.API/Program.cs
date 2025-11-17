@@ -267,6 +267,19 @@ public class Program
             var jwtIssuer = builder.Configuration["Authentication:JWT:Issuer"];
             var jwtAudience = builder.Configuration["Authentication:JWT:Audience"];
 
+            // Validate JWT Secret is configured
+            if (string.IsNullOrEmpty(jwtSecret) || jwtSecret.Contains("${") || jwtSecret == "REPLACE_WITH_SECURE_JWT_SECRET_IN_PRODUCTION")
+            {
+                var errorMessage = "JWT Secret is not configured. Please set the JWT_SECRET environment variable or update appsettings.json. See docs/ENVIRONMENT_SETUP.md for guidance.";
+                Log.Fatal(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            if (jwtSecret.Length < 32)
+            {
+                Log.Warning("JWT Secret is less than 256 bits (32 characters). Consider using a stronger secret for better security.");
+            }
+
             if (!string.IsNullOrEmpty(jwtSecret))
             {
                 var key = Encoding.ASCII.GetBytes(jwtSecret);
@@ -420,15 +433,33 @@ public class Program
         builder.Services.AddSingleton<IMessageBus, MessageBusService>();
         builder.Services.AddSingleton<RealtimeUpdateService>();
 
-        // Add CORS for development
+        // Add CORS policy based on environment
         builder.Services.AddCors(options =>
         {
-            options.AddDefaultPolicy(policy =>
+            if (builder.Environment.IsDevelopment())
             {
-                policy.AllowAnyOrigin()
-                      .AllowAnyMethod()
-                      .AllowAnyHeader();
-            });
+                // Permissive policy for development
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            }
+            else
+            {
+                // Restrictive policy for production
+                var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+                    ?? new[] { "https://yourdomain.com" };
+                
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.WithOrigins(allowedOrigins)
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials();
+                });
+            }
         });
 
         var app = builder.Build();
